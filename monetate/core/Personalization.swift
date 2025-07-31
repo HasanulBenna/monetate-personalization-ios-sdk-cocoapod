@@ -35,7 +35,7 @@ public class Personalization {
         return token
     }
     
-    private var queue: [ContextEnum: MEvent] = [:]
+    private let eventQueueManager = EventQueueManager()
     private var errorQueue: [MError] = []
     
     func isContextSwitched (ctx:ContextEnum, event: MEvent) -> Bool {
@@ -43,7 +43,7 @@ public class Personalization {
              ctx == .ScreenSize || ctx == .Referrer ||
              ctx == .PageView || ctx == .Metadata ||
              ctx == .CustomVariables || ctx == .Language)),
-           let val1 = self.queue[ctx] as? Context,
+           let val1 = eventQueueManager.getEvent(for: ctx) as? Context,
            let val2 = event as? Context, val1.isContextSwitched(ctx: val2) {
             return true
         }
@@ -53,11 +53,11 @@ public class Personalization {
     private func callMonetateAPIOnContextSwitched (context: ContextEnum, event:MEvent) {
         Log.debug("\n>> context switched\n")
         
-        self.callMonetateAPI().on(success: { (res) in
+        self.callMonetateAPI().on(success: {[weak self] (res) in
             
-            Log.debug("callMonetateAPIOnContextSwitched Success - \(self.queue.keys.count)")
-            self.queue[context] = event
-            self.timer?.resume()
+            Log.debug("callMonetateAPIOnContextSwitched Success - \(self?.eventQueueManager.getQueueSnapshot().keys.count ?? 0)")
+            self?.eventQueueManager.setEvent(event, for: context)
+            self?.timer?.resume()
         }, failure: { (er) in
             Log.debug("callMonetateAPIOnContextSwitched Failure")
             
@@ -69,12 +69,12 @@ public class Personalization {
         let promise = Promise <APIResponse, Error>()
         
         Log.debug("\n>> context switched\n")
-        self.callMonetateAPI().on(success: { (res) in
-            Log.debug("callMonetateAPIOnContextSwitchedForGetActions Success \(self.queue.keys.count)")
+        self.callMonetateAPI().on(success: {[weak self] (res) in
+            Log.debug("callMonetateAPIOnContextSwitchedForGetActions Success \(self?.eventQueueManager.getQueueSnapshot().keys.count ?? 0)")
             
             promise.succeed(value: res)
-        }, failure: { (er) in
-            Log.debug("callMonetateAPIOnContextSwitchedForGetActions Success \(self.queue.keys.count)")
+        }, failure: {[weak self] (er) in
+            Log.debug("callMonetateAPIOnContextSwitchedForGetActions Failure \(self?.eventQueueManager.getQueueSnapshot().keys.count ?? 0)")
             
             promise.fail(error: er)
         })
@@ -129,22 +129,24 @@ public class Personalization {
     private func processEventsOnEventReporting (_ context: ContextEnum, _ event: MEvent) {
         
         Log.debug("\n>>context switched - not\n")
-        Utility.processEvent(context: context, data: event, mqueue: self.queue).on(success: { (queue) in
-            self.queue = queue
+        Utility.processEvent(context: context, data: event, mqueue: self.eventQueueManager.getQueueSnapshot()).on(success: {[weak self] (queue) in
+            self?.eventQueueManager.setEvent(event, for: context)
             Log.debug("Event Processed")
             
-            self.timer?.resume()
+            self?.timer?.resume()
         })
     }
     
     fileprivate func processEvents(_ context: ContextEnum, _ event: MEvent, _ requestId: String, _ includeReporting: Bool, _ arrActionTypes:[String], _ promise: Promise<APIResponse, Error>) {
         if isContextSwitched(ctx: context, event: event) {
             self.callMonetateAPIOnContextSwitchedForGetActions().on(success: { (res1) in
-                Utility.processEvent(context: context, data: event, mqueue: self.queue).on(success: { (mqueue) in
-                    self.queue = mqueue
+                Utility.processEvent(context: context, data: event, mqueue: self.eventQueueManager.getQueueSnapshot()).on(success: {[weak self] (mqueue) in
+                    // Update the entire queue snapshot
+                        self?.eventQueueManager.updateQueue(mqueue)
                     //adding decision request event
-                    self.queue[.DecisionRequest] = DecisionRequest(requestId: requestId, includeReporting: includeReporting, actionTypes: arrActionTypes)
-                    self.callMonetateAPI(requestId: requestId).on(success: { (res) in
+                    let decisionRequest = DecisionRequest(requestId: requestId, includeReporting: includeReporting, actionTypes: arrActionTypes)
+                    self?.eventQueueManager.setEvent(decisionRequest, for: .DecisionRequest)
+                    self?.callMonetateAPI(requestId: requestId).on(success: { (res) in
                         Log.debug("processEvents context switch - API success")
                         
                         promise.succeed(value: res)
@@ -158,11 +160,13 @@ public class Personalization {
                 promise.fail(error: er)
             })
         } else {
-            Utility.processEvent(context: context, data: event, mqueue: self.queue).on(success: { (queue) in
-                self.queue = queue
+            Utility.processEvent(context: context, data: event, mqueue: self.eventQueueManager.getQueueSnapshot()).on(success: {[weak self] (queue) in
+                // Update the entire queue snapshot
+                    self?.eventQueueManager.updateQueue(queue)
                 //adding decision request event
-                self.queue[.DecisionRequest] = DecisionRequest(requestId: requestId, includeReporting: includeReporting, actionTypes: arrActionTypes)
-                self.callMonetateAPI(requestId: requestId).on(success: { (res) in
+                let decisionRequest = DecisionRequest(requestId: requestId, includeReporting: includeReporting, actionTypes: arrActionTypes)
+                self?.eventQueueManager.setEvent(decisionRequest, for: .DecisionRequest)
+                self?.callMonetateAPI(requestId: requestId).on(success: { (res) in
                     
                     Log.debug("processEvents without context switch  - API success")
                     promise.succeed(value: res)
@@ -216,8 +220,9 @@ public class Personalization {
      */
     public func addEvent(context:ContextEnum, event: MEvent?) {
         if let event = event {
-            Utility.processEvent(context: context, data: event, mqueue: self.queue).on(success: { (queue) in
-                self.queue = queue
+            Utility.processEvent(context: context, data: event, mqueue: self.eventQueueManager.getQueueSnapshot()).on(success: {[weak self] (queue) in
+                // Update the entire queue snapshot
+                    self?.eventQueueManager.updateQueue(queue)
             })
         }
     }
@@ -242,7 +247,8 @@ public class Personalization {
     
     fileprivate func processDecision(_ requestId: String, _ includeReporting: Bool, _ arrActionTypes:[String], _ promise: Promise<APIResponse, Error>) {
         //adding decision request event
-        self.queue[.DecisionRequest] = DecisionRequest(requestId: requestId, includeReporting: includeReporting, actionTypes: arrActionTypes)
+        let decisionRequest = DecisionRequest(requestId: requestId, includeReporting: includeReporting, actionTypes: arrActionTypes)
+        self.eventQueueManager.setEvent(decisionRequest, for: .DecisionRequest)
         self.callMonetateAPI(requestId: requestId).on(success: { (res) in
             Log.debug("processDecision - API success")
             promise.succeed(value: res)
@@ -278,15 +284,16 @@ public class Personalization {
         var body:[String:Any] = [
             "channel":account.getChannel(),
             "sdkVersion": account.getSDKVersion(),
-            "events": Utility.createEventBody(queue: self.queue)]
+            "events": Utility.createEventBody(queue: eventQueueManager.getQueueSnapshot())]
         
         if let val = self.user.deviceId { body["deviceId"] = val } else if let val = self.user.monetateId { body["monetateId"] = val }
         if let val = self.user.customerId { body["customerId"] = val }
-        Log.debug("success - \(body.toString!)")
+        let jsonString = body.toString ?? "JSON String conversion failed. Fallback: \(String(describing: body))"
+        Log.debug("Monetate Engine API body created - \(jsonString)")
         
         self.timer?.suspend()
-        Service.getDecision(url: self.API_URL + account.getShortName(), body: body, headers: nil, success: { (data, status, res) in
-            self.queue = [:]
+        Service.getDecision(url: self.API_URL + account.getShortName(), body: body, headers: nil, success: {[weak self] (data, status, res) in
+            self?.eventQueueManager.updateQueue([:])
             Log.debug("callMonetateAPI - Success - \(data.toString)")
             
             promise.succeed(value: APIResponse(success: true, res: res, status: status, data: data, requestId:requestId))
@@ -297,9 +304,9 @@ public class Personalization {
                 promise.fail(error: err)
                 self.errorQueue.append(MError(description: err.localizedDescription, domain: .ServerError, info: nil))
             } else {
-                let er = NSError.init(domain: "API Error", code: status!, userInfo: nil)
+                let er = NSError.init(domain: "API Error", code: status ?? -1, userInfo: nil)
                 if let val = d {
-                    let merror = MError(description: er.localizedDescription, domain: .APIError, info: val.toJSON()!)
+                    let merror = MError(description: er.localizedDescription, domain: .APIError, info: val.toJSON() ?? [:])
                     Log.error("callMonetateAPI Error Message- \(val.toString)")
                     
                     self.errorQueue.append(merror)
