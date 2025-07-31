@@ -80,7 +80,7 @@ Join the 1,000+ brands growing their revenue with Monetate"
   #  Supports git, hg, bzr, svn and HTTP.
   #
 
-  s.source       = { :git => "https://github.com/monetate/monetate-personalization-ios-sdk-cocoapod.git", :tag => "2025.08.01" }
+  s.source       = { :git => "https://github.com/HasanulBenna/monetate-personalization-ios-sdk-cocoapod.git", :tag => "2025.08.01" }
 
 
   # ――― Source Code ―――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――― #
