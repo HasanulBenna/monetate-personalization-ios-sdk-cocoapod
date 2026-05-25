@@ -66,8 +66,7 @@ xcodebuild -create-xcframework \
 echo "✅ $CONFIGURATION XCFramework created successfully!"
 
 echo "Zipping XCFramework..."
-cd "$BUILD_DIR"
-zip -r -X "Monetate.xcframework.zip" "Monetate.xcframework"
+(cd "$BUILD_DIR" && zip -r -X "Monetate.xcframework.zip" "Monetate.xcframework")
 
 echo "✅ Done: $BUILD_DIR/Monetate.xcframework.zip"
 
