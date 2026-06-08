@@ -56,17 +56,8 @@ public struct Account:Codable {
 
     
     func getSDKVersion() -> String {
-        #if SWIFT_PACKAGE
-        guard let url = Bundle.module.url(forResource: "Version", withExtension: "plist"),
-              let dict = NSDictionary(contentsOf: url),
-              let version = dict["CFBundleShortVersionString"] as? String else {
-            return "Unknown"
-        }
-        return version
-        #else
         return Bundle(for: Personalization.self)
             .infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
-        #endif
     }
     
     func getChannel () -> String {

@@ -617,8 +617,14 @@ extension Personalization {
     
     private func handleMonetateAPIError(er: Error?, d: Data?, status: Int?, promise: Promise<APIResponse,Error>) {
     
-        if let err = er {
+        if let err = er as? NSError {
             self.errorQueue.append(MError(description: err.localizedDescription, domain: .ServerError, info: nil))
+            Log.error("""
+               callMonetateAPI Error
+               Domain: \(err.domain)
+               Code: \(err.code)
+               Description: \(err.localizedDescription)
+               """)
             promise.fail(error: err)
         } else {
             let er = NSError.init(domain: "API Error", code: status ?? -1, userInfo: nil)
