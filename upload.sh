@@ -7,11 +7,12 @@ set -euo pipefail
 # =========================
 BUILD_DIR="./build"
 
-JFROG_REPO="monetate-ios-local-dev"
+JFROG_REPO="monetate-ios-local"
 JFROG_BASE_URL="https://monetate.jfrog.io/artifactory"
 
 SDK_NAME="Monetate"
-VERSION="2026.04.29"
+# Configurable
+VERSION="2026.07.10"
 
 FILE="${BUILD_DIR}/${SDK_NAME}.xcframework.zip"
 FILE_NAME="$(basename "$FILE")"
