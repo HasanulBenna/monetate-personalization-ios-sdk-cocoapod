@@ -24,7 +24,7 @@ Using Xcode:
 1. Open your project in Xcode
 2. Select File → Add Packages
 3. Enter the repository URL:
-   https://github.com/monetate/monetate-personalization-ios-sdk-binary-config.git 
+   https://github.com/monetate/monetate-personalization-ios-sdk-binary-config.git
 4. Choose 'main' branch or the required version
 5. Add the package to your target
 
