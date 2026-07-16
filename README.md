@@ -5,10 +5,17 @@ Overview:-
 This SDK enables easy communication with Engine API and can be used by any application which is built using iOS
 Using this SDK we can report events and get actions from Engine API.
 
+## Distribution Steps:-
+
+1. Execute **build.sh**
+2. Update the version information and execute **upload.sh**
+3. Obtain the JFrog URL and metadata
+4. Update **Package.swift** with the new upload information, then commit and push the changes to the **monetate-personalization-ios-sdk-binary-config** repository.
+5. Update the **Podspec** with the new upload information, then publish the updated Podspec to the CocoaPods trunk.
 
 Installation:-
 
-Swift Package Manager (SPM)
+## Swift Package Manager (SPM)
 
 The Monetate Personalization SDK can be integrated using Swift Package Manager.
 
@@ -17,8 +24,8 @@ Using Xcode:
 1. Open your project in Xcode
 2. Select File → Add Packages
 3. Enter the repository URL:
-   https://github.com/monetate/monetate-personalization-ios-sdk.git
-4. Choose the required version or 'main' branch
+   https://github.com/monetate/monetate-personalization-ios-sdk-binary-config.git
+4. Choose 'main' branch or the required version
 5. Add the package to your target
 
 Using Package.swift:
@@ -27,17 +34,15 @@ Add the following dependency to your Package.swift file.
 
         dependencies: [
             .package(
-                url: "https://github.com/monetate/monetate-personalization-ios-sdk.git",
+                url: "https://github.com/monetate/monetate-personalization-ios-sdk-binary-config.git",
                 branch: "main"
             )
         ]
 
 
-CocoaPods
+## CocoaPods
    
 pod 'monetate-ios-sdk'
-
-pod 'monetate-ios-sdk', :git => 'https://github.com/monetate/monetate-personalization-ios-sdk-cocoapod.git ', :branch => 'main'
 
 
 Getting started with development :-
