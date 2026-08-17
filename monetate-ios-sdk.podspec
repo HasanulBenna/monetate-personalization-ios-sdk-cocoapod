@@ -65,8 +65,7 @@ Join the 1,000+ brands growing their revenue with Monetate"
   #
 
   s.swift_version = '5.0'
-  s.platform     = :ios, "12"
-
+  s.platform     = :ios, "13.0"
   #  When using multiple platforms
   # s.ios.deployment_target = "5.0"
   # s.osx.deployment_target = "10.7"
