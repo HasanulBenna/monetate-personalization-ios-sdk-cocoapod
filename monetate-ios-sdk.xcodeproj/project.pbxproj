@@ -71,6 +71,7 @@
 		3E7924012E12918500609A04 /* SearchData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E7924002E12918500609A04 /* SearchData.swift */; };
 		3E7D2CA12E39194000C2F5C5 /* EventQueueManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E7D2CA02E39194000C2F5C5 /* EventQueueManager.swift */; };
 		3E8CF1F42DC4E4760013DCAF /* ContextObj.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E8CF1F32DC4E4760013DCAF /* ContextObj.swift */; };
+		3E91F34B302D82CE000F038F /* Version.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3E91F34A302D82C6000F038F /* Version.plist */; };
 		46746A872AD6D388001C6A8B /* CoordinatesTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46746A862AD6D388001C6A8B /* CoordinatesTest.swift */; };
 		46746A892AD83214001C6A8B /* ReferrerTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46746A882AD83214001C6A8B /* ReferrerTest.swift */; };
 		46746A8B2AD98B55001C6A8B /* LanguageTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46746A8A2AD98B55001C6A8B /* LanguageTest.swift */; };
@@ -160,6 +161,7 @@
 		3E7924002E12918500609A04 /* SearchData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchData.swift; sourceTree = "<group>"; };
 		3E7D2CA02E39194000C2F5C5 /* EventQueueManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventQueueManager.swift; sourceTree = "<group>"; };
 		3E8CF1F32DC4E4760013DCAF /* ContextObj.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ContextObj.swift; sourceTree = "<group>"; };
+		3E91F34A302D82C6000F038F /* Version.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Version.plist; sourceTree = "<group>"; };
 		46746A862AD6D388001C6A8B /* CoordinatesTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoordinatesTest.swift; sourceTree = "<group>"; };
 		46746A882AD83214001C6A8B /* ReferrerTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReferrerTest.swift; sourceTree = "<group>"; };
 		46746A8A2AD98B55001C6A8B /* LanguageTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageTest.swift; sourceTree = "<group>"; };
@@ -189,13 +191,13 @@
 		1F157C4926B02FCC000D952B /* monetate */ = {
 			isa = PBXGroup;
 			children = (
+				3E91F349302D82B0000F038F /* Resources */,
 				1F157C4A26B02FCC000D952B /* core */,
 				1F157C5126B02FCC000D952B /* Log.swift */,
 				1F157C5326B02FCC000D952B /* models */,
 				1F157C6C26B02FCC000D952B /* actions */,
 				1F157C6E26B02FCC000D952B /* services */,
 				1F157C7026B02FCC000D952B /* utility */,
-				3EDF6D132F2090B4004C9ECE /* Resources */,
 			);
 			path = monetate;
 			sourceTree = "<group>";
@@ -381,6 +383,14 @@
 			path = monetateTests;
 			sourceTree = "<group>";
 		};
+		3E91F349302D82B0000F038F /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				3E91F34A302D82C6000F038F /* Version.plist */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
 		3EDF6D112F208B83004C9ECE /* Sources */ = {
 			isa = PBXGroup;
 			children = (
@@ -395,13 +405,6 @@
 				22E0FAD0210B68D3002E6B93 /* monetateTests */,
 			);
 			path = Tests;
-			sourceTree = "<group>";
-		};
-		3EDF6D132F2090B4004C9ECE /* Resources */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Resources;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -502,6 +505,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3E91F34B302D82CE000F038F /* Version.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

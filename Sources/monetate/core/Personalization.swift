@@ -22,12 +22,14 @@ public class Personalization {
     private let prerequisiteManager = SearchPrerequisiteManager()
     private let sdkQueue = DispatchQueue(label: "sdk.Monetate.processing", qos: .userInitiated)
     private let requestBodyCreator = RequestBodyCreator()
+    private var enableDebugMode: Bool
     
     //constructor
-    public init (account: Account, user: User) {
+    public init (account: Account, user: User, enableDebugMode: Bool = false) {
         self.account = account
         self.user = user
         self.service = APIService(engineHost: account.getEngineHost())
+        self.enableDebugMode = enableDebugMode
         self.timer = ScheduleTimer(timeInterval: 0.7, callback: { [weak self]  in
             _ = self?.callMonetateAPI()
         })
@@ -104,6 +106,9 @@ public class Personalization {
         _=callMonetateAPI()
     }
     
+    /// Update the customer ID used to identify the customer.
+    /// - Parameter customerId: The customer ID to associate with the SDK.
+    ///   The value must not be empty or contain only whitespace.
     public func setCustomerId (customerId: String) {
         guard !customerId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             Log.error(UserIdError.invalidCustomerId.localizedDescription)
@@ -111,6 +116,12 @@ public class Personalization {
         }
         self.user.setCustomerId(customerId: customerId)
         _ = self.callMonetateAPI()
+    }
+    
+    /// When enabled, the SDK will log Network payload
+    /// - Parameter enabled: Whether debug mode is enabled.
+    public func setDebugMode(_ enabled: Bool) {
+        self.enableDebugMode = enabled
     }
     /// Supported until version 2025.08.01
      /**
@@ -312,10 +323,12 @@ public class Personalization {
         
         let body:[String:Any] = buildDecisionRequestBody()
         let engineURL = service.getDecisionURL(account: account.getShortName()) ?? "Invalid URL"
-        let jsonString = body.toString ?? "JSON String conversion failed. Fallback: \(String(describing: body))"
-        
         Log.debug("Monetate Engine API URL - \(engineURL)")
-        Log.debug("Monetate Engine API body created - \(jsonString)")
+        
+        if enableDebugMode {
+            let jsonString = body.toString ?? "JSON String conversion failed. Fallback: \(String(describing: body))"
+            Log.debug("Monetate Engine API body created - \(jsonString)")
+        }
         
         self.timer?.suspend()
         service.getDecision(url: engineURL, body: body, headers: nil, success: {[weak self] (data, status, res) in
