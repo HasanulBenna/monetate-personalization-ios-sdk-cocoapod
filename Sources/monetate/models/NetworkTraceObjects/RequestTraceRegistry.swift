@@ -23,8 +23,8 @@ public final class RequestTraceRegistry {
         )
 
         lock.lock()
+        defer { lock.unlock() }
         traces[requestId] = trace
-        lock.unlock()
 
         return trace
     }
