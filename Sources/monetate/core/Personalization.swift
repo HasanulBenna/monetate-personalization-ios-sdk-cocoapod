@@ -23,6 +23,7 @@ public class Personalization {
     private let sdkQueue = DispatchQueue(label: "sdk.Monetate.processing", qos: .userInitiated)
     private let requestBodyCreator = RequestBodyCreator()
     private var enableDebugMode: Bool
+    private let requestTraceRegistry = RequestTraceRegistry()
     
     //constructor
     public init (account: Account, user: User, enableDebugMode: Bool = false) {
@@ -320,7 +321,7 @@ public class Personalization {
     
     func callMonetateAPI (data: Data? = nil, requestId: String?=nil) -> Future<APIResponse,Error> {
         let promise = Promise<APIResponse,Error>()
-        
+        let requestId = requestId ?? generateRequestId()
         let body:[String:Any] = buildDecisionRequestBody()
         let engineURL = service.getDecisionURL(account: account.getShortName()) ?? "Invalid URL"
         Log.debug("Monetate Engine API URL - \(engineURL)")
@@ -329,7 +330,10 @@ public class Personalization {
             let jsonString = body.toString ?? "JSON String conversion failed. Fallback: \(String(describing: body))"
             Log.debug("Monetate Engine API body created - \(jsonString)")
         }
-        
+        // Trace object
+        _ = requestTraceRegistry.createTrace(
+            requestId: requestId
+        )
         self.timer?.suspend()
         service.getDecision(url: engineURL, body: body, headers: nil, success: {[weak self] (data, status, res) in
             self?.eventQueueManager.updateQueue([:])
