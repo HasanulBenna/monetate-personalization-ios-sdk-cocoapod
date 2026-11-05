@@ -20,21 +20,18 @@ final class EventQueueManager {
         return serialSyncQueue.sync { queue[context] }
     }
 
-    // Add optional completion callback called once update is done
-    func updateQueue(_ newQueue: [ContextEnum: MEvent], completion: (() -> Void)? = nil) {
-        serialSyncQueue.async {
+    func updateQueue(_ newQueue: [ContextEnum: MEvent]) {
+        serialSyncQueue.sync {
             self.queue = newQueue
-            completion?()
         }
     }
-
-    // Add optional completion callback called once event is set
-    func setEvent(_ event: MEvent, for context: ContextEnum, completion: (() -> Void)? = nil) {
-        serialSyncQueue.async {
+    
+    func setEvent(_ event: MEvent, for context: ContextEnum) {
+        serialSyncQueue.sync {
             self.queue[context] = event
-            completion?()
         }
     }
+    
 }
 
 

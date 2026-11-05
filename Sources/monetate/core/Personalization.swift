@@ -21,6 +21,7 @@ public class Personalization {
     
     private let prerequisiteManager = SearchPrerequisiteManager()
     private let sdkQueue = DispatchQueue(label: "sdk.Monetate.processing", qos: .userInitiated)
+    private let eventQueueUpdateQueue = DispatchQueue(label: "sdk.Monetate.eventQueueUpdateQueue", qos: .userInitiated)
     private let requestBodyCreator = RequestBodyCreator()
     private var enableDebugMode: Bool
     private lazy var traceManager = TraceManager()
@@ -55,6 +56,23 @@ public class Personalization {
         return UUID().uuidString
     }
     
+    // MARK: - Manage Lost Events in Queue Updates
+
+    private func mergeIntoEventQueue(_ context: ContextEnum, _ event: MEvent) {
+        eventQueueUpdateQueue.sync {
+            let merged = Utility.mergedQueue(context: context,
+                                             data: event,
+                                             mqueue: self.eventQueueManager.getQueueSnapshot())
+            self.eventQueueManager.updateQueue(merged)
+        }
+    }
+    
+    private func setEventInQueue(_ event: MEvent, for context: ContextEnum) {
+        eventQueueUpdateQueue.sync {
+            self.eventQueueManager.setEvent(event, for: context)
+        }
+    }
+    
     func isContextSwitched (ctx:ContextEnum, event: MEvent) -> Bool {
         if ((ctx == .UserAgent || ctx == .IpAddress || ctx == .Coordinates ||
              ctx == .ScreenSize || ctx == .Referrer ||
@@ -74,7 +92,7 @@ public class Personalization {
             
             let count = self?.eventQueueManager.getQueueSnapshot().keys.count ?? 0
             Log.debug("callMonetateAPIOnContextSwitched success - queue count: \(count)")
-            self?.eventQueueManager.setEvent(event, for: context)
+            self?.mergeIntoEventQueue(context, event)
             self?.timer?.resume()
         }, failure: { [weak self] er in
             Log.debug("callMonetateAPIOnContextSwitched Failure")
@@ -165,52 +183,48 @@ public class Personalization {
     private func processEventsOnEventReporting (_ context: ContextEnum, _ event: MEvent) {
         
         Log.debug("\n>>context switched - not\n")
-        Utility.processEvent(context: context, data: event, mqueue: self.eventQueueManager.getQueueSnapshot()).on(success: {[weak self] (queue) in
-            self?.eventQueueManager.setEvent(event, for: context)
-            Log.debug("Event Processed")
-            
-            self?.timer?.resume()
-        })
+        mergeIntoEventQueue(context, event)
+        Log.debug("Event Processed")
+
+        self.timer?.resume()
     }
     
     fileprivate func processEvents(_ context: ContextEnum, _ event: MEvent, _ requestId: String, _ includeReporting: Bool, _ arrActionTypes:[String], _ promise: Promise<APIResponse, Error>) {
         if isContextSwitched(ctx: context, event: event) {
             self.callMonetateAPIOnContextSwitchedForGetActions().on(success: { [weak self](res1) in
-                Utility.processEvent(context: context, data: event, mqueue: self?.eventQueueManager.getQueueSnapshot() ?? [:]).on(success: {[weak self] (mqueue) in
-                    // Update the entire queue snapshot
-                        self?.eventQueueManager.updateQueue(mqueue)
-                    //adding decision request event
-                    let decisionRequest = DecisionRequest(requestId: requestId, includeReporting: includeReporting, actionTypes: arrActionTypes)
-                    self?.eventQueueManager.setEvent(decisionRequest, for: .DecisionRequest)
-                    self?.callMonetateAPI(requestId: requestId).on(success: { (res) in
-                        Log.debug("processEvents context switch - API success")
-                        
-                        promise.succeed(value: res)
-                    }, failure: { (er) in
-                        Log.debug("processEvents context switch - API failure")
-                        
-                        promise.fail(error: er)
-                    })
+                guard let self = self.guardSelf(promise: promise) else { return }
+                self.mergeIntoEventQueue(context, event)
+
+                //adding decision request event
+                let decisionRequest = DecisionRequest(requestId: requestId, includeReporting: includeReporting, actionTypes: arrActionTypes)
+                self.setEventInQueue(decisionRequest, for: .DecisionRequest)
+                self.callMonetateAPI(requestId: requestId).on(success: { (res) in
+                    Log.debug("processEvents context switch - API success")
+
+                    promise.succeed(value: res)
+                }, failure: { (er) in
+                    Log.debug("processEvents context switch - API failure")
+
+                    promise.fail(error: er)
                 })
             }, failure: { (er) in
                 promise.fail(error: er)
             })
         } else {
-            Utility.processEvent(context: context, data: event, mqueue: self.eventQueueManager.getQueueSnapshot()).on(success: {[weak self] (queue) in
-                // Update the entire queue snapshot
-                    self?.eventQueueManager.updateQueue(queue)
-                //adding decision request event
-                let decisionRequest = DecisionRequest(requestId: requestId, includeReporting: includeReporting, actionTypes: arrActionTypes)
-                self?.eventQueueManager.setEvent(decisionRequest, for: .DecisionRequest)
-                self?.callMonetateAPI(requestId: requestId).on(success: { (res) in
-                    
-                    Log.debug("processEvents without context switch  - API success")
-                    promise.succeed(value: res)
-                }, failure: { (er) in
-                    
-                    Log.error("processEvents without context switch  - API failure")
-                    promise.fail(error: er)
-                })
+            
+            self.mergeIntoEventQueue(context, event)
+
+            //adding decision request event
+            let decisionRequest = DecisionRequest(requestId: requestId, includeReporting: includeReporting, actionTypes: arrActionTypes)
+            self.setEventInQueue(decisionRequest, for: .DecisionRequest)
+            self.callMonetateAPI(requestId: requestId).on(success: { (res) in
+
+                Log.debug("processEvents without context switch  - API success")
+                promise.succeed(value: res)
+            }, failure: { (er) in
+
+                Log.error("processEvents without context switch  - API failure")
+                promise.fail(error: er)
             })
         }
     }
@@ -257,12 +271,15 @@ public class Personalization {
      
      */
     private func addEvent(context:ContextEnum, event: MEvent?) {
-        if let event = event {
-            Utility.processEvent(context: context, data: event, mqueue: self.eventQueueManager.getQueueSnapshot()).on(success: {[weak self] (queue) in
-                // Update the entire queue snapshot
-                    self?.eventQueueManager.updateQueue(queue)
-            })
-        }
+        guard let event = event else { return }
+
+        // Q1ClaudeUpdate_Issue3_LostUpdates: was getQueueSnapshot() -> processEvent(...) ->
+        // updateQueue(whole dict), with the write-back riding a Future callback that defaults to
+        // DispatchQueue.main. addEventData(context:) calls this up to 13 times in a row and
+        // getActions then builds the request body immediately, so on a background caller these
+        // 13 writes both raced each other AND could land after the request was already built.
+        // One atomic merge per call fixes both.
+        mergeIntoEventQueue(context, event)
     }
     
     /**
@@ -286,7 +303,7 @@ public class Personalization {
     fileprivate func processDecision(_ requestId: String, _ includeReporting: Bool, _ arrActionTypes:[String], _ promise: Promise<APIResponse, Error>) {
         //adding decision request event
         let decisionRequest = DecisionRequest(requestId: requestId, includeReporting: includeReporting, actionTypes: arrActionTypes)
-        self.eventQueueManager.setEvent(decisionRequest, for: .DecisionRequest)
+        self.setEventInQueue(decisionRequest, for: .DecisionRequest)
         self.callMonetateAPI(requestId: requestId).on(success: { (res) in
             Log.debug("processDecision - API success")
             promise.succeed(value: res)

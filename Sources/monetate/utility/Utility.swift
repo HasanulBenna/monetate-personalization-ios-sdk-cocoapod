@@ -99,6 +99,9 @@ class Utility {
         }
         return promise.future
     }
+    static func mergedQueue(context: ContextEnum, data: MEvent, mqueue: [ContextEnum: MEvent]) -> [ContextEnum: MEvent] {
+        return processEvent(context: context, data: data, mqueue: mqueue).value ?? mqueue
+    }
     
     static func createEventBody(queue: [ContextEnum: MEvent]) -> [[String: Any]] {
         var json: [[String: Any]] = []
